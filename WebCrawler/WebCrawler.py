@@ -1,14 +1,19 @@
 import requests
 import lxml
+import datetime
+import sys
 from bs4 import BeautifulSoup
 
 #Connect to website given by user
 URL = input("URL: ")
-resp = requests.get(URL)
+headers = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE'
+}
+resp = requests.get(URL, headers = headers)
 print(resp.status_code)
 
 if resp.status_code != 200:
-    raise Exception("Website did not connect properly. Check status code: " + resp.status_code)
+    raise Exception("Website did not connect properly. Check status code: " + str(resp.status_code))
     
 
 class Citation:
@@ -44,7 +49,6 @@ class dataCrawler:
         self._soup = soup
 
     def findAuthor(self):
-        authors = set()
         searches = [
             {'name': 'author'},
             {'property': 'article:author'},
@@ -57,47 +61,46 @@ class dataCrawler:
             author_elements += self._soup.find_all(attrs=s)
 
         for el in author_elements:
-            author = self._get_data_from_element(el)
-            if (len(author.split()) > 1):
-                authors.add(author)
-    
+           if len(el) > 0:
+               return el.text
+
+        return None
+
     def findTitle(self):
         searches = [
-            {'property': 'og:title'}
-            ]
+            {'class':'title'},
+            'title'
+        ]
 
-        for s in searches: 
-            el = self.soup.find(attrs=s)
-            if(el is not None):
-                return self._get_data_from_element(el)
-
-        return '[[[TITLE]]]'
-
-    def get_publication_date(self):
-        searches = [
-                {'name': 'date'},
-                {'property': 'published_time'},
-                {'name': 'timestamp'},
-                {'class': 'submitted-date'},
-                {'class': 'posted-on'},
-                {'class': 'timestamp'},
-                {'class': 'date'},
-
-                ]
+        title_elements = []
         for s in searches:
-            el = self._soup.find(attrs=s)
-            if (el is not None):
-                return self._get_data_from_element(el)
+            title_elements += self._soup.find_all(attrs=s)
 
-        return '[[[PUBLICATION DATE]]]'
+        for el in title_elements:
+            if len(el) > 0:
+                return el.text
 
-    def _get_data_from_element(self, el):
-        try:
-            return el['content']
-        except KeyError:
-            return el.text
+        return None
+
+    def findPublisher(self):
+        searches = [
+            {'id':'copyright', 'rel':'p'},
+            'siteName'
+        ]
+
+        publisher_elements = []
+        for s in searches:
+            publisher_elements += self._soup.find_all(attrs=s)
+
+        for el in publisher_elements:
+            if len(el) > 0:
+                return el.text
+
+        return None
     
-
-
-owl = Citation()
-owl.crawlData()
+    
+    
+crawl = dataCrawler(BeautifulSoup(resp.text, "lxml"))
+print(crawl.findAuthor())
+print(crawl.findTitle())
+print(crawl.findPublisher())
