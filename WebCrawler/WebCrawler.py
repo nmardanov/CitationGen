@@ -53,7 +53,8 @@ class dataCrawler:
             {'name': 'author'},
             {'property': 'article:author'},
             {'property': 'author'},
-            {'rel': 'author'}
+            {'rel': 'author'},
+            {'class': 'byline__name'}
             ]
 
         author_elements = []
@@ -69,6 +70,7 @@ class dataCrawler:
     def findTitle(self):
         searches = [
             {'class':'title'},
+            {'property':'og:title'},
             'title'
         ]
 
@@ -78,14 +80,17 @@ class dataCrawler:
 
         for el in title_elements:
             if len(el) > 0:
-                return el.text
+                try:
+                    return el['content']
+                except KeyError:
+                    return el.text
 
         return None
 
     def findPublisher(self):
         searches = [
-            {'id':'copyright', 'rel':'p'},
-            'siteName'
+            #[{'id':'copyright'}, 'p'],
+            
         ]
 
         publisher_elements = []
@@ -97,10 +102,31 @@ class dataCrawler:
                 return el.text
 
         return None
+
+    def findDate(self):
+        searches = [
+            
+        ]
+
+        date_elements = []
+        for s in searches:
+            date_elements += self._soup.find_all(attrs=s)
+
+        for el in date_elements:
+            if len(el) > 0:
+                return el.text
+
+        return None
     
     
     
+#TESTING:
 crawl = dataCrawler(BeautifulSoup(resp.text, "lxml"))
+
+print("Printing full raw data for this URL:\n")
 print(crawl.findAuthor())
 print(crawl.findTitle())
 print(crawl.findPublisher())
+print(crawl.findDate())
+print(URL)
+print("\nData has been printed.")
