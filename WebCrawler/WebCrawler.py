@@ -2,6 +2,7 @@ import requests
 import lxml
 import datetime
 import sys
+import re
 from bs4 import BeautifulSoup
 
 #Connect to website given by user
@@ -14,7 +15,27 @@ print(resp.status_code)
 
 if resp.status_code != 200:
     raise Exception("Website did not connect properly. Check status code: " + str(resp.status_code))
-    
+
+#Function to parse for "name":"[content]" format. Specialize to find data in metascript
+p = re.compile(r'"name":"([^"]*)"')
+
+"""
+
+For future use:
+p can be combined with search parameters to find intended data. For example:
+"isPartOf".+"name":"([^"]*)"
+would find the publisher for the NYT because this is how they dictate publisher information. 
+To change this parameter, one could do the following:
+
+param = ""
+p = re.compile(r'"' + param + r'".+name:"([^"]*)"')
+
+Now param can be changed to search for the intended value. Make a list of param searches
+and try to return any values that are found using them. This can be used for all 4 major 
+categories of data for MLA citations. Fuck BeautifulSoup4.
+
+"""
+
 
 class Citation:
     def __init__(self, author="", title="", container="", publisher="", publish="", link=URL):
@@ -49,6 +70,7 @@ class dataCrawler:
         self._soup = soup
 
     def findAuthor(self):
+        authors = set()
         searches = [
             {'name': 'author'},
             {'property': 'article:author'},
@@ -61,11 +83,14 @@ class dataCrawler:
         for s in searches:
             author_elements += self._soup.find_all(attrs=s)
 
+        print(author_elements)
         for el in author_elements:
-           if len(el) > 0:
-               return el.text
+           author = self.returnData(el)
+           if (len(author.split()) > 1):
+               authors.add(author)
 
-        return None
+        authors_list = list(authors)
+        return authors_list[0]
 
     def findTitle(self):
         searches = [
@@ -79,29 +104,28 @@ class dataCrawler:
             title_elements += self._soup.find_all(attrs=s)
 
         for el in title_elements:
-            if len(el) > 0:
-                try:
-                    return el['content']
-                except KeyError:
-                    return el.text
+            title = self.returnData(el)
+            
 
-        return None
+        return title
 
     def findPublisher(self):
-        searches = [
-            #[{'id':'copyright'}, 'p'],
-            
-        ]
-
-        publisher_elements = []
-        for s in searches:
-            publisher_elements += self._soup.find_all(attrs=s)
-
-        for el in publisher_elements:
-            if len(el) > 0:
-                return el.text
 
         return None
+        #searches = [
+        #    [{'id':'copyright'}, 'p'],
+            
+        #]
+
+        #publisher_elements = []
+        #for s in searches:
+        #    publisher_elements += self._soup.find_all(attrs=s)
+
+        #for el in publisher_elements:
+        #    if len(el) > 0:
+        #        return el.text
+
+        #return None
 
     def findDate(self):
         searches = [
@@ -115,8 +139,15 @@ class dataCrawler:
         for el in date_elements:
             if len(el) > 0:
                 return el.text
-
         return None
+
+    def returnData(self, el):
+        try:
+            return el['content']
+        except KeyError:
+            return el.text
+
+        
     
     
     
@@ -124,6 +155,9 @@ class dataCrawler:
 crawl = dataCrawler(BeautifulSoup(resp.text, "lxml"))
 
 print("Printing full raw data for this URL:\n")
+
+#print(crawl._soup.find_all(attrs={'property':'article:author'})[0].get_text())
+
 print(crawl.findAuthor())
 print(crawl.findTitle())
 print(crawl.findPublisher())
