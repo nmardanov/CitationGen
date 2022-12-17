@@ -68,6 +68,8 @@ class Citation:
 class dataCrawler:
     def __init__(self, soup):
         self._soup = soup
+        self.ld = self.soup.find('script', {'type': 'application/ld+json'})
+        print(self.ld)
 
     def findAuthor(self):
         authors = set()
@@ -111,21 +113,15 @@ class dataCrawler:
 
     def findPublisher(self):
 
+        searches = [
+            'isPartOf',
+            'publisher'
+        ]
+
+        for s in searches:
+            pass
+
         return None
-        #searches = [
-        #    [{'id':'copyright'}, 'p'],
-            
-        #]
-
-        #publisher_elements = []
-        #for s in searches:
-        #    publisher_elements += self._soup.find_all(attrs=s)
-
-        #for el in publisher_elements:
-        #    if len(el) > 0:
-        #        return el.text
-
-        #return None
 
     def findDate(self):
         searches = [
