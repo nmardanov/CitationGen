@@ -1,11 +1,9 @@
 import requests
-import lxml
-import datetime
-import sys
+from datetime import datetime
 import re
 from bs4 import BeautifulSoup
 
-#Connect to website given by user
+#Connect to URL given by user
 URL = input("URL: ")
 headers = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE'
@@ -13,38 +11,34 @@ headers = {
 resp = requests.get(URL, headers = headers)
 print(resp.status_code)
 
+#Check for established connection. Return error if website did not connect.
 if resp.status_code != 200:
-    raise Exception("Website did not connect properly. Check status code: " + str(resp.status_code))
+    raise Exception("Website did not connect properly. Check HTTP status code: " + str(resp.status_code))
 
-#Function to parse for "name":"[content]" format. Specialize to find data in metascript
-p = re.compile(r'"name":"([^"]*)"')
 
 """
+Current known edge cases: 
+-Multiple authors
+-No ld+json script
 
-For future use:
-p can be combined with search parameters to find intended data. For example:
-"isPartOf".+"name":"([^"]*)"
-would find the publisher for the NYT because this is how they dictate publisher information. 
-To change this parameter, one could do the following:
-
-param = ""
-p = re.compile(r'"' + param + r'".+name:"([^"]*)"')
-
-Now param can be changed to search for the intended value. Make a list of param searches
-and try to return any values that are found using them. This can be used for all 4 major 
-categories of data for MLA citations. Fuck BeautifulSoup4.
-
+TODO:
+Frontend website w/ editing
+Store citations on one page, ordered alphabetically
+Maybe save citations in email? or create text document with citations?
 """
 
-
+#Citation class. Inputs URL then uses data from dataCrawler class to generate and format a citation.
 class Citation:
-    def __init__(self, author="", title="", container="", publisher="", publish="", link=URL):
-        self.author = author
-        self.title = title
-        self.container = container
-        self.publisher = publisher
-        self.publish = publish
-        self.link = link
+    def __init__(self, _URL=URL):
+        self._URL = _URL
+        self.crawl = dataCrawler(BeautifulSoup(resp.text, "lxml"))
+        self.data = {
+            'author' : self.crawl.findAuthor(),
+            'title' : self.crawl.findTitle(),
+            'publisher' : self.crawl.findPublisher(),
+            'date' : self.crawl.findDate(),
+            'URL' : self._URL
+        }
         self.result = self.generateCitation()
 
     #prints the full citation
@@ -55,24 +49,30 @@ class Citation:
     def generateCitation(self):
         result = []
 
-        result.append(f"{self.author.upper()}. ")
-        result.append(f"{self.title}. ")
-        result.append(f"{self.container}, ")
-        result.append(f"{self.publisher}, ")
-        result.append(f"{self.publish}, ")
-        result.append(f"{self.link}.")
+        result.append(f"{self.data['author'].title()}. ")
+        result.append(f"{self.data['title']}. ")
+        result.append(f"{self.data['publisher']}, ")
+        result.append(f"{self.data['date']}, ")
+        result.append(f"{self.data['URL']}, ")
+        result.append(f"date accessed: {datetime.now().strftime('%d %b, %Y')}.")
 
         return ''.join(result)
+    
 
 
+#Web scraper class. Inputs URL then finds data from website using BS4 and regex. Data is formatted ready for citation use.
 class dataCrawler:
     def __init__(self, soup):
+        #Initialize soup with given URL
         self._soup = soup
-        self.ld = self.soup.find('script', {'type': 'application/ld+json'})
-        print(self.ld)
 
+        #Find the ld+json script and return its contents as a string
+        self._ld = str(self._soup.find('script', {'type': 'application/ld+json'}))
+
+    #Return author from given searches
     def findAuthor(self):
         authors = set()
+
         searches = [
             {'name': 'author'},
             {'property': 'article:author'},
@@ -85,7 +85,6 @@ class dataCrawler:
         for s in searches:
             author_elements += self._soup.find_all(attrs=s)
 
-        print(author_elements)
         for el in author_elements:
            author = self.returnData(el)
            if (len(author.split()) > 1):
@@ -94,6 +93,7 @@ class dataCrawler:
         authors_list = list(authors)
         return authors_list[0]
 
+    #Return title from given searches, or from <title> HTML tag
     def findTitle(self):
         searches = [
             {'class':'title'},
@@ -108,9 +108,9 @@ class dataCrawler:
         for el in title_elements:
             title = self.returnData(el)
             
-
         return title
 
+    #Return publisher from ld+json script on most websites. May need to be expanded for sites without and ld+json script.
     def findPublisher(self):
 
         searches = [
@@ -118,24 +118,37 @@ class dataCrawler:
             'publisher'
         ]
 
+        publisher_elements = []
         for s in searches:
-            pass
+            #Compiles for first instance of search, then for first appearance of "name": and captures whatever follows.
+            p = re.compile(s+r'.+?"name":"([^"]*)"')
+            publisher_elements += p.findall(self._ld)
 
-        return None
+        try:
+            return publisher_elements[0]
+        except:
+            return None
 
+    #Finds date from ld+json script
+    #TODO: Ignore empty list elements when returning
     def findDate(self):
+        
         searches = [
-            
+            'datePublished',
+            'dateModified'
         ]
 
         date_elements = []
         for s in searches:
-            date_elements += self._soup.find_all(attrs=s)
+            #Compiles for first isntance of search, then captures whatever follows.
+            p = re.compile(s + r'":"([^"]*)T')
+            date_elements += p.findall(self._ld)
 
-        for el in date_elements:
-            if len(el) > 0:
-                return el.text
-        return None
+        try:
+            dateFormat = datetime.fromisoformat(date_elements[0])
+            return dateFormat.strftime('%d %b, %Y')
+        except KeyError: 
+            return None
 
     def returnData(self, el):
         try:
@@ -148,15 +161,18 @@ class dataCrawler:
     
     
 #TESTING:
-crawl = dataCrawler(BeautifulSoup(resp.text, "lxml"))
+cite = Citation(URL)
 
 print("Printing full raw data for this URL:\n")
 
 #print(crawl._soup.find_all(attrs={'property':'article:author'})[0].get_text())
 
-print(crawl.findAuthor())
-print(crawl.findTitle())
-print(crawl.findPublisher())
-print(crawl.findDate())
-print(URL)
+print(cite.data['author'])
+print(cite.data['title'])
+print(cite.data['publisher'])
+print(cite.data['date'])
+print(cite.data['URL'])
+
+print(cite.generateCitation())
+
 print("\nData has been printed.")
