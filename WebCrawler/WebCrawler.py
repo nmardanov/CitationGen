@@ -23,6 +23,7 @@ Current known edge cases:
 
 TODO:
 Frontend website w/ editing
+Exceptions for when data returns None
 Store citations on one page, ordered alphabetically
 Maybe save citations in email? or create text document with citations?
 """
@@ -91,7 +92,11 @@ class dataCrawler:
                authors.add(author)
 
         authors_list = list(authors)
-        return authors_list[0]
+
+        try:
+            return authors_list[0]
+        except:
+            return None
 
     #Return title from given searches, or from <title> HTML tag
     def findTitle(self):
