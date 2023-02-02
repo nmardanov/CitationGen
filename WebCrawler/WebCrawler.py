@@ -18,12 +18,10 @@ if resp.status_code != 200:
 
 """
 Current known edge cases: 
--Multiple authors
 -No ld+json script
 
 TODO:
 Frontend website w/ editing
-Exceptions for when data returns None
 Store citations on one page, ordered alphabetically
 Maybe save citations in email? or create text document with citations?
 """
@@ -50,12 +48,36 @@ class Citation:
     def generateCitation(self):
         result = []
 
-        result.append(f"{self.data['author'].title()}. ")
-        result.append(f"{self.data['title']}. ")
-        result.append(f"{self.data['publisher']}, ")
-        result.append(f"{self.data['date']}, ")
-        result.append(f"{self.data['URL']}, ")
-        result.append(f"date accessed: {datetime.now().strftime('%d %b, %Y')}.")
+        if self.data['author'] != None:
+            result.append(f"{self.data['author']}. ")
+        else:
+            handle = input("No author found. Manually enter an author, or type N to continue.")
+            if handle != 'N':
+                result.append(f"{handle}. ")
+
+        if self.data['title'] != None:
+            result.append(f"\"{self.data['title']}.\" ")
+        else:
+            handle = input("No title found. Manually enter a title, or type N to continue.")
+            if handle != 'N':
+                result.append(f"{handle}. ")
+
+        if self.data['publisher'] != None:
+            result.append(f"{self.data['publisher']}, ")
+        else:
+            handle = input("No publisher found. Manually enter a publisher, or type N to continue.")
+            if handle != 'N':
+                result.append(f"{handle}. ")
+
+        if self.data['date'] != None:
+            result.append(f"{self.data['date']}, ")
+        else:
+            handle = input("No date found. Manually enter a date, or type N to continue.")
+            if handle != 'N':
+                result.append(f"{handle}. ")
+
+        result.append(f"{self.data['URL']}. ")
+        result.append(f"Accessed: {datetime.now().strftime('%d %b, %Y')}.")
 
         return ''.join(result)
     
@@ -94,7 +116,9 @@ class dataCrawler:
         authors_list = list(authors)
 
         try:
-            return authors_list[0]
+            if len(authors_list) > 3:
+                return authors_list[0].title() + ' et al'
+            return ', '.join(authors_list).title()
         except:
             return None
 
