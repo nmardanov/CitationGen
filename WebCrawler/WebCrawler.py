@@ -116,6 +116,7 @@ class dataCrawler:
         authors_list = list(authors)
 
         try:
+            1/len(authors_list[0]) #Escapes try block if author length is 0, which sometimes occurs in input boxes with the 'name="author"' tag
             if len(authors_list) > 3:
                 return authors_list[0].title() + ' et al'
             return ', '.join(authors_list).title()
@@ -176,7 +177,7 @@ class dataCrawler:
         try:
             dateFormat = datetime.fromisoformat(date_elements[0])
             return dateFormat.strftime('%d %b, %Y')
-        except KeyError: 
+        except: 
             return None
 
     def returnData(self, el):
@@ -202,6 +203,6 @@ print(cite.data['publisher'])
 print(cite.data['date'])
 print(cite.data['URL'])
 
-print(cite.generateCitation())
+print(cite.result)
 
 print("\nData has been printed.")
