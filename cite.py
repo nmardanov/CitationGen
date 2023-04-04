@@ -73,7 +73,7 @@ class Citation:
         try:
             return self.data[item]
         except:
-            return "dumbass. pick a valid item."
+            return "silly! pick a valid item."
     
 
 
